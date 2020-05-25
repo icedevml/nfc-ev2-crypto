@@ -43,13 +43,16 @@ def nibbles(x: Union[bytes, str]) -> Generator[int, None, None]:
 
 
 def incr_counter(r: bytes):
-    ctr = struct.unpack(">I", r)[0] + 1
+    max_bit_len = len(r) * 8
 
-    if ctr > 2**32 - 1:
-        # overflow
-        ctr = 0
+    ctr_orig = int.from_bytes(r, byteorder='big', signed=False)
+    ctr_incr = ctr_orig + 1
 
-    return struct.pack(">I", ctr)
+    if ctr_incr.bit_length() > max_bit_len:
+        # we have overflow, reset counter to zero
+        return b"\x00" * len(r)
+
+    return ctr_incr.to_bytes(len(r), byteorder='big')
 
 
 def e(k: bytes, v: bytes) -> bytes:

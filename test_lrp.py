@@ -6,7 +6,18 @@ import binascii
 
 from Crypto.Protocol.SecretSharing import _Element
 
-from lrp import LRP, nibbles
+from lrp import LRP, nibbles, incr_counter
+
+
+def test_incr_counter():
+    assert b"\x01" == incr_counter(b"\x00")
+    assert b"\x02" == incr_counter(b"\x01")
+    assert b"\x00" == incr_counter(b"\xFF")
+    assert b"\x12\x12" == incr_counter(b"\x12\x11")
+    assert b"\x00\x00" == incr_counter(b"\xFF\xFF")
+    assert b"\x00\x01" == incr_counter(b"\x00\x00")
+    assert b"\x00\x02" == incr_counter(b"\x00\x01")
+    assert b"\x00\x00\x00\x00" == incr_counter(b"\xFF\xFF\xFF\xFF")
 
 
 def test_vectors_generate_plaintexts():
