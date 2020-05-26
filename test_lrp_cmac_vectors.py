@@ -8,7 +8,7 @@ from lrp import LRP
 
 
 def execute_test(KEY, Kx, MSG, MAC):
-    lrp = LRP(binascii.unhexlify(KEY), 0, b"\x00" * 16, pad=True)
+    lrp = LRP(binascii.unhexlify(KEY), 0)
     assert lrp.cmac(binascii.unhexlify(MSG)).hex().upper() == MAC.upper()
 
 

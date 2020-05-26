@@ -8,6 +8,7 @@ from lrp import LRP
 
 import binascii
 
+
 def test_lrp_sdm():
     key = binascii.unhexlify("00000000000000000000000000000000")
 
@@ -42,13 +43,13 @@ def test_lrp_sdm():
     assert svstream.getbuffer().nbytes % 16 == 0
 
     # generate master key
-    lrp = LRP(key, 0, b"\x00" * 16, pad=False)
+    lrp = LRP(key, 0)
     master_key = lrp.cmac(svstream.getvalue())
 
     assert master_key.hex() == "99c2fd9c885c2ca3c9089c20057310c0"
 
     # generate actual MAC_LRP
-    mac_obj = LRP(master_key, 0, b"\x00" * 16, pad=False)
+    mac_obj = LRP(master_key, 0)
     # everything in hex since PICCData till the MAC offset
     msg_no_cmac = (msg.split('x')[0] + 'x').encode('ascii')
     full_tag = mac_obj.cmac(msg_no_cmac)

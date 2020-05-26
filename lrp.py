@@ -72,14 +72,17 @@ def d(k: bytes, v: bytes) -> bytes:
 
 
 class LRP:
-    def __init__(self, key: bytes, u: int, r: bytes, pad: bool):
+    def __init__(self, key: bytes, u: int, r: bytes = None, pad: bool = True):
         """
         Leakage Resilient Primitive
         :param key: secret key from which updated keys will be derived
         :param u: number of updated key to use (counting from 0)
-        :param r: IV/counter value
-        :param pad: whether to use bit padding or no
+        :param r: IV/counter value (default: all zeros)
+        :param pad: whether to use bit padding or no (default: True)
         """
+        if r is None:
+            r = b"\x00" * 16
+
         self.key = key
         self.u = u
         self.r = r
