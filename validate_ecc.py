@@ -4,8 +4,11 @@
 import sys
 import binascii
 
+from ecdsa import VerifyingKey
 from ecdsa.curves import NIST224p
+
 PUBLIC_KEY = binascii.unhexlify(b"048A9B380AF2EE1B98DC417FECC263F8449C7625CECE82D9B916C992DA209D68422B81EC20B65A66B5102A61596AF3379200599316A00A1410")
+
 
 def validate_tag(uid: bytes, sig: bytes) -> bool:
     vk = VerifyingKey.from_string(PUBLIC_KEY, curve=NIST224p)
