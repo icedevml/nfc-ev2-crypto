@@ -1,1 +1,2 @@
 pycryptodome==3.9.4
+ecdsa==0.16.1
