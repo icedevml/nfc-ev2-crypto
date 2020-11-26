@@ -25,6 +25,8 @@ def validate_tag(uid: bytes, sig: bytes) -> bool:
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print('Usage: python3 validate_ecc.py <uid> <sig>')
+        print('    uid - tag UID, hex encoded')
+        print('    sig - originality signature as returned by Read_Sig')
         print('Example:')
         print('    python3 validate_ecc.py 04518DFAA96180 D1940D17CFEDA4BFF80359AB975F9F6514313E8F90C1D3CAAF5941AD744A1CDF9A83F883CAFE0FE95D1939B1B7E47113993324473B785D21')
         sys.exit(2)
