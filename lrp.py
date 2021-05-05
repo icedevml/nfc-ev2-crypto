@@ -8,12 +8,16 @@ because in such case it may be not resistant to the side channel attacks.
 
 import binascii
 import io
+import os
 import struct
-from typing import Generator, List, Union
+from typing import Generator, List, Union, Tuple
 
 from Crypto.Cipher import AES
 from Crypto.Protocol.SecretSharing import _Element
+from Crypto.Util.Padding import unpad
 from Crypto.Util.strxor import strxor
+
+from comm import require, BaseComm, CommMode
 
 
 def remove_pad(pt: bytes):
@@ -241,4 +245,108 @@ class LRP:
         return LRP.eval_lrp(self.p, self.kp, y, True)
 
 
-__all__ = ['LRP']
+class AuthenticateLRP:
+    def __init__(self, auth_key):
+        self.auth_key = auth_key
+
+        self.rnda = None
+        self.rndb = None
+
+    def init(self, key_no: bytes) -> bytes:
+        return b"\x90\x71\x00\x00\x03" + key_no + b"\x01\x02\x00"
+
+    def generate_rnda(self):
+        return os.urandom(16)
+
+    def part1(self, part1_resp: bytes) -> bytes:
+        require("R-APDU length", len(part1_resp) == 19)
+        require("status code 91AF", part1_resp[-2:] == b"\x91\xAF")
+        require("Auth mode = 01", part1_resp[0:1] == b"\x01")
+
+        self.rndb = part1_resp[1:17]
+        self.rnda = self.generate_rnda()
+
+        sv = lrp_gen_sv(self.rnda, self.rndb)
+        crypto_macing, crypto_encing = lrp_get_crypto(self.auth_key, sv)
+        pcd_resp = crypto_macing.cmac(self.rnda + self.rndb)
+
+        return b"\x90\xAF\x00\x00\x20" + self.rnda + pcd_resp + b"\x00"
+
+    def part2(self, part2_resp: bytes) -> 'CryptoCommLRP':
+        # F4FC209D9D60623588B299FA5D6B2D710125F8547D9FB8D572C90D2C2A14E2359100
+        require("R-APDU length", len(part2_resp) == 34)
+        require("status code 9100", part2_resp[-2:] == b"\x91\x00")
+        picc_data, picc_response = part2_resp[0:16], part2_resp[16:32]
+
+        sv = lrp_gen_sv(self.rnda, self.rndb)
+        print('auth key', self.auth_key.hex())
+        print('sv', sv.hex())
+        crypto_macing, crypto_encing = lrp_get_crypto(self.auth_key, sv)
+        dec_picc_data = crypto_encing.decrypt(picc_data)
+
+        require("generated PICCResponse == received PICCResponse",
+                crypto_macing.cmac(self.rndb + self.rnda + picc_data) == picc_response)
+
+        comm = CryptoCommLRP(crypto_macing, crypto_encing, ti=dec_picc_data[0:4], cmd_counter=1)
+        comm.cmd_counter = 0
+        return comm
+
+
+def lrp_gen_sv(rnda, rndb):
+    stream = io.BytesIO()
+    # they are counting from right to left :D
+    stream.write(b"\x00\x01\x00\x80")
+    stream.write(rnda[0:2])  # [RndA[15:14]
+    stream.write(strxor(rnda[2:8], rndb[0:6]))  # [ (RndA[13:8] ⊕ RndB[15:10]) ]
+    stream.write(rndb[-10:])  # [RndB[9:0]
+    stream.write(rnda[-8:])  # RndA[7:0]
+    stream.write(b"\x96\x69")
+    return stream.getvalue()
+
+
+def lrp_get_crypto(key, sv):
+    crypto = LRP(key, 0)
+    ses_auth_master_key = crypto.cmac(sv)
+
+    crypto_macing = LRP(ses_auth_master_key, 0)
+    crypto_encing = LRP(ses_auth_master_key, 1, r=b"\x00\x00\x00\x00", pad=False)
+    return crypto_macing, crypto_encing
+
+
+class CryptoCommLRP(BaseComm):
+    """
+    This class represents an authenticated session after AuthentivateEV2 command.
+    It offers the ability to prepare APDUs for CommMode.MAC or CommMode.FULL and validate R-APDUs in these modes.
+    """
+
+    def __init__(self, crypto_macing,
+                 crypto_encing,
+                 *,
+                 ti: bytes = None,
+                 cmd_counter: int = 0,
+                 pdcap2: bytes = None,
+                 pcdcap2: bytes = None):
+        self.crypto_macing = crypto_macing
+        self.crypto_encing = crypto_encing
+        self.ti = ti
+        self.cmd_counter = cmd_counter
+        self.pdcap2 = pdcap2
+        self.pcdcap2 = pcdcap2
+
+    def calc_raw_data(self, data: bytes) -> bytes:
+        """
+        Calculate CMAC for raw data.
+        :param data: raw data
+        :return: CMAC
+        """
+        mac = self.crypto_macing.cmac(data)
+        return bytes(bytearray([mac[i] for i in range(16) if i % 2 == 1]))
+
+    def perform_enc(self, plaintext):
+        return self.crypto_encing.encrypt(plaintext)
+
+    def perform_dec(self, ciphertext):
+        return self.crypto_encing.decrypt(ciphertext)
+
+
+__all__ = ['LRP', 'AuthenticateLRP', 'CryptoCommLRP']
