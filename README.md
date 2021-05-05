@@ -1,8 +1,10 @@
 # EV2/LRP cryptography example
 
-* `AuthenticateEV2` - perform authentication with PICC;
-* `CryptoComm` - sign/encrypt APDUs and validate responses;
+* `AuthenticateEV2` - perform authentication with PICC using EV2 mode;
+* `CryptoComm` - sign/encrypt APDUs and validate responses (EV2 mode);
 * `LRP` - perform CTR mode encryption/decryption or CMACing with Leakage Resilient Primitive;
+* `AuthenticateLRP` - perform authentication with PICC using LRP;
+* `CryptoCommLRP` - sign/encrypt APDUs and validate responses (LRP mode);
 * `validate_ecc` - check asymmetric originality signature;
 
 This code was written according to the publicly available application note *AN12196 "NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints"*.
@@ -38,6 +40,9 @@ Please refer to `test_ev2.py` and cross-check it with the application notes. The
   * `decrypt_response` - decrypt the response data parsed by `validate_response` (`CommMode.FULL` response);
 
 ### LRP
+Please refer to `test_lrp_cmd.py`.
+
+### LRP Privimites
 
 LRICB Encryption (LRICBEnc) and decryption (LRICBDec):
 ```python
