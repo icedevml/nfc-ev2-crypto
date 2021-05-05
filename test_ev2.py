@@ -2,7 +2,8 @@
 # Authorization with key 0x00
 import binascii
 
-from ev2 import AuthenticateEV2, CryptoComm, CommMode
+from comm import CommMode
+from ev2 import AuthenticateEV2, CryptoComm
 
 
 def test_auth1():
